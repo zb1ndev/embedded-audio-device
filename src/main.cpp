@@ -23,7 +23,7 @@ button_t play_button, record_button;
 int32_t record_buffer[RING_BUFFER_BLOCK_SIZE]       = {0};
 int32_t playback_buffer[RING_BUFFER_BLOCK_SIZE]     = {0};
 
-int16_t recorded_data[RECORDED_BUFFER_SIZE]         = {0};
+int16_t* recorded_data                              = NULL;         // @note has to be heap allocated, does not fit in data segment
 uint32_t recorded_data_size                         = 0;
 bool recording                                      = false;
 
@@ -38,6 +38,7 @@ void initialize_devices(void) {
     #define AMP_I2S_DATA_PIN                        (2U)
   
     i2s_config_t config = (i2s_config_t) {
+
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX),
         .sample_rate = MICROPHONE_I2S_CLOCK_FREQUENCY,
         .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
@@ -48,13 +49,16 @@ void initialize_devices(void) {
         .use_apll = false,
         .tx_desc_auto_clear = true,
         .fixed_mclk = 0                                                             // @note we are not using master clock 
+    
     };
 
     i2s_pin_config_t pin_config = {
+    
         .bck_io_num = I2S_CLOCK_PIN,
         .ws_io_num = I2S_WS_PIN,
         .data_out_num = AMP_I2S_DATA_PIN,
         .data_in_num = MICROPHONE_I2S_DATA_PIN
+    
     };
 
     // @note bind and start i2s clock lines
@@ -87,6 +91,12 @@ void setup(void) {
     digitalWrite(STATUS_LED_PIN_R, HIGH);
 
     initialize_devices();
+
+    recorded_data = (int16_t*)malloc(RECORDED_BUFFER_SIZE);
+    if (recorded_data == NULL) {
+        Serial.println("error: failed to allocated recorded data buffer");
+        block_err;
+    }
 
     digitalWrite(STATUS_LED_PIN_R, LOW);
     delay(500);
